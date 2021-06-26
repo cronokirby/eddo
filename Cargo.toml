@@ -2,6 +2,8 @@
 name = "eddo"
 version = "0.1.0"
 edition = "2018"
+description = "Ed25519 signatures (don't use)"
+license = "MIT"
 
 [lib]
 name = "eddo"
