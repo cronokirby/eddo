@@ -99,7 +99,7 @@ impl MessageSchedule {
             let mt = u64::from_be_bytes(chunk.try_into().unwrap());
             self.words[t] = mt;
         }
-        for t in 16..self.words.len() {
+        for t in 16..=63 {
             self.words[t] = ssig1(self.words[t - 2])
                 .wrapping_add(self.words[t - 7])
                 .wrapping_add(ssig0(self.words[t - 15]))
@@ -115,6 +115,7 @@ impl MessageSchedule {
 /// which gets modified using our message blocks.
 struct HashValue {
     data: [u64; 8],
+    schedule: MessageSchedule,
 }
 
 impl HashValue {
@@ -132,6 +133,55 @@ impl HashValue {
                 0x1f83d9abfb41bd6b,
                 0x5be0cd19137e2179,
             ],
+            schedule: MessageSchedule::new(),
         }
+    }
+
+    /// Update the current hash value, as per Section 6.3:
+    /// https://datatracker.ietf.org/doc/html/rfc6234#section-6.3
+    fn update(&mut self, block: &[u8; BLOCK_SIZE]) {
+        // The following titles are quoted from the algorithm in Section 6.3:
+
+        // 1. Prepare the message schedule W:
+        self.schedule.prepare(block);
+        let w = self.schedule.words;
+
+        // 2. Initialize the working variables:
+        let mut a = self.data[0];
+        let mut b = self.data[1];
+        let mut c = self.data[2];
+        let mut d = self.data[3];
+        let mut e = self.data[4];
+        let mut f = self.data[5];
+        let mut g = self.data[6];
+        let mut h = self.data[7];
+
+        // 3. Perform the main hash computation:
+        for t in 0..=63 {
+            let t1 = h
+                .wrapping_add(bsig1(e))
+                .wrapping_add(ch(e, f, g))
+                .wrapping_add(K[t])
+                .wrapping_add(w[t]);
+            let t2 = bsig0(a).wrapping_add(maj(a, b, c));
+            h = g;
+            g = f;
+            f = e;
+            e = d.wrapping_add(t1);
+            d = c;
+            c = b;
+            b = a;
+            a = t1.wrapping_add(t2);
+        }
+
+        // 4. Compute the intermediate hash value H(i)
+        self.data[0] = a.wrapping_add(self.data[0]);
+        self.data[1] = b.wrapping_add(self.data[1]);
+        self.data[2] = c.wrapping_add(self.data[2]);
+        self.data[3] = d.wrapping_add(self.data[3]);
+        self.data[4] = e.wrapping_add(self.data[4]);
+        self.data[5] = f.wrapping_add(self.data[5]);
+        self.data[6] = g.wrapping_add(self.data[6]);
+        self.data[7] = h.wrapping_add(self.data[7]);
     }
 }
