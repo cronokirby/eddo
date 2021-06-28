@@ -3,7 +3,13 @@
 //!
 //! This file tries to follow RFC 6234 (https://datatracker.ietf.org/doc/html/rfc6234).
 
-use std::ops::Index;
+use std::convert::TryInto;
+
+/// BLOCK_SIZE is the number of bytes needed to make a 1024 bit block
+///
+/// This block structure is described in Section 4:
+/// https://datatracker.ietf.org/doc/html/rfc6234#section-4
+const BLOCK_SIZE: usize = 128;
 
 // Utility functions, as in Section 5.2:
 // https://datatracker.ietf.org/doc/html/rfc6234#section-5.2
@@ -65,6 +71,42 @@ const K: [u64; 80] = [
     0x28db77f523047d84, 0x32caab7b40c72493, 0x3c9ebe0a15c9bebc, 0x431d67c49c100d4c,
     0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817,
 ];
+
+/// This is used to avoid allocating new space for the message schedule for each block.
+///
+/// This is a struct of our invention, and is used to carry out part 1 of the algorithm
+/// in Section 6.3:
+/// https://datatracker.ietf.org/doc/html/rfc6234#section-6.3
+struct MessageSchedule {
+    words: [u64; 64],
+}
+
+impl MessageSchedule {
+    /// Create a new MessageSchedule
+    ///
+    /// This state shouldn't be used directly, but rather initialized with a message block.
+    fn new() -> MessageSchedule {
+        MessageSchedule { words: [0; 64] }
+    }
+
+    /// This prepares the message schedule with a new message block.
+    ///
+    /// This follows part 1 of the algorithm in Section 6.3:
+    /// https://datatracker.ietf.org/doc/html/rfc6234#section-6.3
+    fn prepare(&mut self, block: &[u8; BLOCK_SIZE]) {
+        for (t, chunk) in block.chunks_exact(8).enumerate() {
+            // Casting the chunk to the right size will never fail, because we use chunks_exact
+            let mt = u64::from_be_bytes(chunk.try_into().unwrap());
+            self.words[t] = mt;
+        }
+        for t in 16..self.words.len() {
+            self.words[t] = ssig1(self.words[t - 2])
+                .wrapping_add(self.words[t - 7])
+                .wrapping_add(ssig0(self.words[t - 15]))
+                .wrapping_add(self.words[t - 16]);
+        }
+    }
+}
 
 /// Represents a "hash value", as described in Section 6:
 /// https://datatracker.ietf.org/doc/html/rfc6234#section-6
