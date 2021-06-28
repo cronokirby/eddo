@@ -3,6 +3,8 @@
 //!
 //! This file tries to follow RFC 6234 (https://datatracker.ietf.org/doc/html/rfc6234).
 
+use std::ops::Index;
+
 // Utility functions, as in Section 5.2:
 // https://datatracker.ietf.org/doc/html/rfc6234#section-5.2
 
@@ -61,5 +63,33 @@ const K: [u64; 80] = [
     0xca273eceea26619c, 0xd186b8c721c0c207, 0xeada7dd6cde0eb1e, 0xf57d4f7fee6ed178,
     0x06f067aa72176fba, 0x0a637dc5a2c898a6, 0x113f9804bef90dae, 0x1b710b35131c471b,
     0x28db77f523047d84, 0x32caab7b40c72493, 0x3c9ebe0a15c9bebc, 0x431d67c49c100d4c,
-    0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817
+    0x4cc5d4becb3e42b6, 0x597f299cfc657e2a, 0x5fcb6fab3ad6faec, 0x6c44198c4a475817,
 ];
+
+/// Represents a "hash value", as described in Section 6:
+/// https://datatracker.ietf.org/doc/html/rfc6234#section-6
+///
+/// This can be thought of as the ongoing state of our hash function,
+/// which gets modified using our message blocks.
+struct HashValue {
+    data: [u64; 8],
+}
+
+impl HashValue {
+    /// Create an initial hash value, as per Section 6.3:
+    /// https://datatracker.ietf.org/doc/html/rfc6234#section-6.3
+    fn initial() -> HashValue {
+        HashValue {
+            data: [
+                0x6a09e667f3bcc908,
+                0xbb67ae8584caa73b,
+                0x3c6ef372fe94f82b,
+                0xa54ff53a5f1d36f1,
+                0x510e527fade682d1,
+                0x9b05688c2b3e6c1f,
+                0x1f83d9abfb41bd6b,
+                0x5be0cd19137e2179,
+            ],
+        }
+    }
+}
