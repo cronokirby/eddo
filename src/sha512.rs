@@ -81,7 +81,7 @@ const K: [u64; 80] = [
 /// in Section 6.3:
 /// https://datatracker.ietf.org/doc/html/rfc6234#section-6.3
 struct MessageSchedule {
-    words: [u64; 64],
+    words: [u64; 80],
 }
 
 impl MessageSchedule {
@@ -89,7 +89,7 @@ impl MessageSchedule {
     ///
     /// This state shouldn't be used directly, but rather initialized with a message block.
     fn new() -> MessageSchedule {
-        MessageSchedule { words: [0; 64] }
+        MessageSchedule { words: [0; 80] }
     }
 
     /// This prepares the message schedule with a new message block.
@@ -102,7 +102,7 @@ impl MessageSchedule {
             let mt = u64::from_be_bytes(chunk.try_into().unwrap());
             self.words[t] = mt;
         }
-        for t in 16..=63 {
+        for t in 16..=79 {
             self.words[t] = ssig1(self.words[t - 2])
                 .wrapping_add(self.words[t - 7])
                 .wrapping_add(ssig0(self.words[t - 15]))
@@ -143,6 +143,7 @@ impl HashValue {
     /// Update the current hash value, as per Section 6.3:
     /// https://datatracker.ietf.org/doc/html/rfc6234#section-6.3
     fn update(&mut self, block: &[u8; BLOCK_SIZE]) {
+        println!("block: {:X?}", block);
         // The following titles are quoted from the algorithm in Section 6.3:
 
         // 1. Prepare the message schedule W:
@@ -160,7 +161,7 @@ impl HashValue {
         let mut h = self.data[7];
 
         // 3. Perform the main hash computation:
-        for t in 0..=63 {
+        for t in 0..=79 {
             let t1 = h
                 .wrapping_add(bsig1(e))
                 .wrapping_add(ch(e, f, g))
@@ -235,7 +236,8 @@ pub fn hash(message: &[u8]) -> [u8; HASH_SIZE] {
     }
 
     // c. Then append the 128-bit block that is L in binary representation.
-    scratch_block[BLOCK_SIZE - size_of::<usize>()..].copy_from_slice(&message.len().to_be_bytes());
+    let l = 8 * (message.len() as u128);
+    scratch_block[BLOCK_SIZE - size_of::<u128>()..].copy_from_slice(&l.to_be_bytes());
 
     hash_value.update(&scratch_block);
 
