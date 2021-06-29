@@ -3,7 +3,10 @@
 //!
 //! This file tries to follow RFC 6234 (https://datatracker.ietf.org/doc/html/rfc6234).
 
-use std::convert::TryInto;
+use std::{convert::TryInto, mem::size_of};
+
+// This is the number of bytes in our 512 bit hash.
+pub const HASH_SIZE: usize = 64;
 
 /// BLOCK_SIZE is the number of bytes needed to make a 1024 bit block
 ///
@@ -184,4 +187,57 @@ impl HashValue {
         self.data[6] = g.wrapping_add(self.data[6]);
         self.data[7] = h.wrapping_add(self.data[7]);
     }
+
+    fn result(&self) -> [u8; HASH_SIZE] {
+        let mut out = [0; HASH_SIZE];
+        for (i, chunk) in out.chunks_exact_mut(size_of::<u64>()).enumerate() {
+            chunk.copy_from_slice(&self.data[i].to_be_bytes());
+        }
+        out
+    }
+}
+
+pub fn hash(message: &[u8]) -> [u8; HASH_SIZE] {
+    let mut hash_value = HashValue::initial();
+
+    let mut blocks = message.chunks_exact(BLOCK_SIZE);
+    for block in &mut blocks {
+        hash_value.update(block.try_into().unwrap());
+    }
+
+    let remainder = blocks.remainder();
+    let remainder_len = remainder.len();
+    if remainder_len == 0 {
+        return hash_value.result();
+    }
+
+    // Now, we need to handle padding, as per Section 4.2:
+    // https://datatracker.ietf.org/doc/html/rfc6234#section-4.2
+
+    // This buffer is used to contain whatever remaining blocks we feed into the hasher
+    let mut scratch_block = [0; BLOCK_SIZE];
+    scratch_block[..remainder_len].copy_from_slice(remainder);
+
+    // a. "1" is appended
+    scratch_block[remainder_len] = 0b1000_0000;
+
+    // b. K "0"s are appended where K is the smallest, non-negative solution
+    // to the equation
+    //     ( L + 1 + K ) mod 1024 = 896
+
+    // Here, the 1 we add includes the zero bits we've already added.
+    let l_plus_1 = remainder_len + 1;
+    let desired_size = BLOCK_SIZE - size_of::<u128>();
+    // In this case, we have two extra blocks, one of which is already ready
+    if l_plus_1 > desired_size {
+        hash_value.update(&scratch_block);
+        scratch_block.fill(0);
+    }
+
+    // c. Then append the 128-bit block that is L in binary representation.
+    scratch_block[BLOCK_SIZE - size_of::<usize>()..].copy_from_slice(&message.len().to_be_bytes());
+
+    hash_value.update(&scratch_block);
+
+    hash_value.result()
 }
