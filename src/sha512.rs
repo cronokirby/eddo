@@ -208,9 +208,6 @@ pub fn hash(message: &[u8]) -> [u8; HASH_SIZE] {
 
     let remainder = blocks.remainder();
     let remainder_len = remainder.len();
-    if remainder_len == 0 {
-        return hash_value.result();
-    }
 
     // Now, we need to handle padding, as per Section 4.2:
     // https://datatracker.ietf.org/doc/html/rfc6234#section-4.2
@@ -242,4 +239,41 @@ pub fn hash(message: &[u8]) -> [u8; HASH_SIZE] {
     hash_value.update(&scratch_block);
 
     hash_value.result()
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_vectors() {
+        let mut expected = [0; HASH_SIZE];
+
+        let mut actual = hash(b"abcde");
+        hex::decode_to_slice(
+        "878ae65a92e86cac011a570d4c30a7eaec442b85ce8eca0c2952b5e3cc0628c2e79d889ad4d5c7c626986d452dd86374b6ffaa7cd8b67665bef2289a5c70b0a1",
+        &mut expected,
+        ).unwrap();
+        assert_eq!(actual, expected);
+
+        actual = hash(b"abc");
+        hex::decode_to_slice(
+        "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+        &mut expected,
+        ).unwrap();
+        assert_eq!(actual, expected);
+
+        actual = hash(b"");
+        hex::decode_to_slice(
+        "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
+        &mut expected,
+        ).unwrap();
+        assert_eq!(actual, expected);
+        actual = hash(b"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF");
+        hex::decode_to_slice(
+        "92fd0a1e6218274d4ab9824bf2be236ef8bdc5bd5fead472e04850f01aabcdfa8ecccc8d690fd86ae2295886ff26b4602e8f8651d12434a3cef0b4aff8ca13b4",
+        &mut expected,
+        ).unwrap();
+        assert_eq!(actual, expected);
+    }
 }
