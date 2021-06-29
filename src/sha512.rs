@@ -189,6 +189,8 @@ impl HashValue {
         self.data[7] = h.wrapping_add(self.data[7]);
     }
 
+    // This calculates the final result from a hash value, as per the end of Section 6.4:
+    // https://datatracker.ietf.org/doc/html/rfc6234#section-6.4
     fn result(&self) -> [u8; HASH_SIZE] {
         let mut out = [0; HASH_SIZE];
         for (i, chunk) in out.chunks_exact_mut(size_of::<u64>()).enumerate() {
@@ -198,6 +200,10 @@ impl HashValue {
     }
 }
 
+/// This calculates the SHA-512 hash of some arbitrary input, producing 512 bits of output.
+///
+/// This implements the function as defined in RFC 6234:
+/// https://datatracker.ietf.org/doc/html/rfc6234
 pub fn hash(message: &[u8]) -> [u8; HASH_SIZE] {
     let mut hash_value = HashValue::initial();
 
@@ -269,9 +275,17 @@ mod test {
         &mut expected,
         ).unwrap();
         assert_eq!(actual, expected);
+        // This tests the case where our message is already a full block
         actual = hash(b"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF");
         hex::decode_to_slice(
         "92fd0a1e6218274d4ab9824bf2be236ef8bdc5bd5fead472e04850f01aabcdfa8ecccc8d690fd86ae2295886ff26b4602e8f8651d12434a3cef0b4aff8ca13b4",
+        &mut expected,
+        ).unwrap();
+        assert_eq!(actual, expected);
+        // This tests the case where we need to produce two padding blocks
+        actual = hash(b"23456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF");
+        hex::decode_to_slice(
+        "c3d3bdc93db599c39d1647d31e939cd3bdfa9aef649ef85c4ce1e6e9a4ead4471203f6681e9dda2834688d876e95aa2452fe9263dbc72999d54b5a87ebe637fc",
         &mut expected,
         ).unwrap();
         assert_eq!(actual, expected);
