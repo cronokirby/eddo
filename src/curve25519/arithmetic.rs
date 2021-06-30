@@ -59,4 +59,18 @@ mod test {
             assert_eq!(a + b, b + a);
         }
     }
+
+    #[test]
+    fn test_addition_examples() {
+        let a = U256 {
+            limbs: [u64::MAX, u64::MAX, u64::MAX, 0]
+        };
+        let b = U256 {
+            limbs: [2, 0, 0, 0]
+        };
+        let c = U256 {
+            limbs: [1, 0, 0, 1]
+        };
+        assert_eq!(a + b, c);
+    }
 }
