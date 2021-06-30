@@ -1,4 +1,6 @@
 extern crate hex;
+
+mod arch;
 mod sha512;
 mod curve25519;
 
