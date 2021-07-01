@@ -81,10 +81,6 @@ impl Mul for U256 {
 
         let multiply_in = |i: usize, j: usize| {
             let uv = u128::from(self.limbs[i]) * u128::from(other.limbs[j]);
-            println!(
-                "i: {}, self[i]: {}, j: {}, other[j], uv: {:X?}",
-                i, self.limbs[i], other.limbs[j], uv
-            );
             let mut carry = 0;
             let mut out = 0;
             carry = adc(carry, uv as u64, r0.get(), &mut out);
