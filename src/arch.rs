@@ -22,3 +22,26 @@ pub fn adc(carry: u8, a: u64, b: u64, out: &mut u64) -> u8 {
         (full_res >> 64) as u8
     }
 }
+
+/// sbb computes out <- a - b - borrow, outputting a new borrow value
+///
+/// `borrow` must be 0, or 1. The return value will satisfy this constraint
+#[inline]
+pub fn sbb(borrow: u8, a: u64, b: u64, out: &mut u64) -> u8 {
+    #[cfg(target_arch = "x86_64")]
+    {
+        // Using this intrinsic is perfectly safe
+        unsafe { arch::_subborrow_u64(borrow, a, b, out) }
+    }
+    #[cfg(not(target_arch = "x86_64"))]
+    {
+        // Like with addition, we use a larger type to be able to have carry information
+        // We also hope that Rust can figure out what we're doing, and replace this
+        // sequence with an `sbb` instruction
+        let full_res = i128::from(a) - i128::from(b) - i128::from(borrow);
+        *out = full_res as u64;
+        // NOTE: This might leak with odd code generation?
+        // If this compiles to a branch instruction, then that would be an issue
+        u8::from(full_res < 0)
+    }
+}

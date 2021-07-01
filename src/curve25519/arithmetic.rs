@@ -1,9 +1,6 @@
-use std::{
-    cell::Cell,
-    ops::{Add, AddAssign, Mul},
-};
+use std::{cell::Cell, ops::{Add, AddAssign, Mul, Sub, SubAssign}};
 
-use crate::arch::adc;
+use crate::arch::{adc, sbb};
 
 /// Represents a 256 bit unsigned integer.
 ///
@@ -42,6 +39,27 @@ impl Add for U256 {
 
     fn add(mut self, other: U256) -> Self::Output {
         self += other;
+        self
+    }
+}
+
+impl SubAssign for U256 {
+    fn sub_assign(&mut self, other: U256) {
+        let mut borrow: u8 = 0;
+        // Let's have confidence in Rust's ability to unroll this loop.
+        for i in 0..4 {
+            // Each intermediate result may generate up to 65 bits of output.
+            // We need to daisy-chain the carries together, to get the right result.
+            borrow = sbb(borrow, self.limbs[i], other.limbs[i], &mut self.limbs[i]);
+        }
+    }
+}
+
+impl Sub for U256 {
+    type Output = Self;
+
+    fn sub(mut self, other: U256) -> Self::Output {
+        self -= other;        
         self
     }
 }
@@ -203,5 +221,33 @@ mod test {
         };
         let (_, lo) = a * b;
         assert_eq!(lo, b);
+    }
+
+    proptest! {
+        #[test]
+        fn test_subtraction_yields_zero(a in arb_u256()) {
+            assert_eq!(a - a, 0.into());
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_subtraction_versus_negation(a in arb_u256(), b in arb_u256()) {
+            assert_eq!(a - b, U256::from(0) - (b - a));
+        }
+    }
+
+    #[test]
+    fn test_subtraction_examples() {
+        let a = U256 {
+            limbs: [0; 4],
+        };
+        let b = U256 {
+            limbs: [1, 0, 0, 0],
+        };
+        let c = U256 {
+            limbs: [u64::MAX; 4],
+        };
+        assert_eq!(a - b, c);
     }
 }
