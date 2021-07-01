@@ -1,6 +1,9 @@
-use std::{cell::Cell, ops::{Add, AddAssign, Mul, Sub, SubAssign}};
+use std::{
+    cell::Cell,
+    ops::{Add, AddAssign, Mul, Sub, SubAssign},
+};
 
-use crate::arch::{adc, sbb};
+use crate::arch::{adc, mulc, sbb};
 
 /// Represents a 256 bit unsigned integer.
 ///
@@ -59,7 +62,7 @@ impl Sub for U256 {
     type Output = Self;
 
     fn sub(mut self, other: U256) -> Self::Output {
-        self -= other;        
+        self -= other;
         self
     }
 }
@@ -138,6 +141,19 @@ impl Mul for U256 {
     }
 }
 
+impl Mul<u64> for U256 {
+    type Output = (u64, U256);
+
+    fn mul(mut self, small: u64) -> Self::Output {
+        let mut carry = 0;
+        // Hopefully this gets unrolled
+        for i in 0..4 {
+            carry = mulc(carry, small, self.limbs[i], &mut self.limbs[i]);
+        }
+        (carry, self)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::U256;
@@ -190,7 +206,7 @@ mod test {
     proptest! {
         #[test]
         fn test_multiplication_identity(a in arb_u256()) {
-            let (hi1, lo1) = a * 1.into();
+            let (hi1, lo1) = a * U256::from(1);
             let (hi2, lo2) = U256::from(1) * a;
             assert_eq!(hi1, 0.into());
             assert_eq!(hi2, 0.into());
@@ -239,9 +255,7 @@ mod test {
 
     #[test]
     fn test_subtraction_examples() {
-        let a = U256 {
-            limbs: [0; 4],
-        };
+        let a = U256 { limbs: [0; 4] };
         let b = U256 {
             limbs: [1, 0, 0, 0],
         };
@@ -249,5 +263,33 @@ mod test {
             limbs: [u64::MAX; 4],
         };
         assert_eq!(a - b, c);
+    }
+
+    proptest! {
+        #[test]
+        fn test_doubling_is_just_addition(a in arb_u256()) {
+            assert_eq!((a * 2).1, a + a);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_scaling_is_multiplying(a in arb_u256(), u in any::<u64>()) {
+            assert_eq!((a * U256::from(u)).1, (a * u).1);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_adding_scaling(a in arb_u256(), u in 0..(1u64 << 63), v in 0..(1u64 << 63)) {
+            assert_eq!((a * (u + v)).1, (a * u).1 + (a * v).1)
+        }
+    }
+
+    #[test]
+    fn test_scaling_examples() {
+        let a = U256 { limbs: [1; 4] };
+        let c = U256 { limbs: [64; 4] };
+        assert_eq!((a * 64).1, c);
     }
 }

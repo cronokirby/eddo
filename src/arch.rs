@@ -45,3 +45,11 @@ pub fn sbb(borrow: u8, a: u64, b: u64, out: &mut u64) -> u8 {
         u8::from(full_res < 0)
     }
 }
+
+/// mulc computs out <- a * b + carry, outputting a new carry limb
+#[inline]
+pub fn mulc(carry: u64, a: u64, b: u64, out: &mut u64) -> u64 {
+    let full_res = u128::from(a) * u128::from(b) + u128::from(carry);
+    *out = full_res as u64;
+    (full_res >> 64) as u64
+}
