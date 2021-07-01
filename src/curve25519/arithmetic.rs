@@ -47,6 +47,20 @@ impl U256 {
         }
         carry
     }
+
+    /// cond_add adds another field element into this one, if choice is set.
+    ///
+    /// If choice is not set, then this function has no effect.
+    ///
+    /// This is done without leaking whether or not the addition happened.
+    pub fn cond_add(&mut self, other: U256, choice: Choice) {
+        let mut carry = 0;
+        for i in 0..4 {
+            // When choice is not set, we just add 0 each time, doing nothing
+            let to_add = u64::conditional_select(&0, &other.limbs[i], choice);
+            carry = adc(carry, self.limbs[i], to_add, &mut self.limbs[i]);
+        }
+    }
 }
 
 impl ConditionallySelectable for U256 {
