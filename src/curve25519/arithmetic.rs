@@ -3,6 +3,8 @@ use std::{
     ops::{Add, AddAssign, Mul, Sub, SubAssign},
 };
 
+use subtle::{Choice, ConditionallySelectable};
+
 use crate::arch::{adc, mulc, sbb};
 
 /// Represents a 256 bit unsigned integer.
@@ -15,6 +17,19 @@ use crate::arch::{adc, mulc, sbb};
 #[cfg_attr(test, derive(PartialEq))]
 pub struct U256 {
     limbs: [u64; 4],
+}
+
+impl ConditionallySelectable for U256 {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        U256 {
+            limbs: [
+                u64::conditional_select(&a.limbs[0], &b.limbs[0], choice),
+                u64::conditional_select(&a.limbs[1], &b.limbs[1], choice),
+                u64::conditional_select(&a.limbs[2], &b.limbs[2], choice),
+                u64::conditional_select(&a.limbs[3], &b.limbs[3], choice),
+            ],
+        }
+    }
 }
 
 impl From<u64> for U256 {

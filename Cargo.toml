@@ -15,6 +15,7 @@ path = "src/bin.rs"
 
 [dependencies]
 hex = "0.4.3"
+subtle = "2.4.0"
 
 [dev-dependencies]
 proptest = "1.0.0"

@@ -1,4 +1,5 @@
 extern crate hex;
+extern crate subtle;
 
 mod arch;
 mod sha512;
