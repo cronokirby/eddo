@@ -143,7 +143,6 @@ impl HashValue {
     /// Update the current hash value, as per Section 6.3:
     /// https://datatracker.ietf.org/doc/html/rfc6234#section-6.3
     fn update(&mut self, block: &[u8; BLOCK_SIZE]) {
-        println!("block: {:X?}", block);
         // The following titles are quoted from the algorithm in Section 6.3:
 
         // 1. Prepare the message schedule W:
