@@ -16,7 +16,37 @@ use crate::arch::{adc, mulc, sbb};
 // a timing leak through equality comparison in other situations.
 #[cfg_attr(test, derive(PartialEq))]
 pub struct U256 {
-    limbs: [u64; 4],
+    pub limbs: [u64; 4],
+}
+
+impl U256 {
+    /// sub_with_borrow subtracts other from this elements in place, returning a borrow
+    ///
+    /// A borrow is generated (returning 1), when this subtraction underflows.
+    pub fn sub_with_borrow(&mut self, other: U256) -> u8 {
+        let mut borrow: u8 = 0;
+        // Let's have confidence in Rust's ability to unroll this loop.
+        for i in 0..4 {
+            // Each intermediate result may generate up to 65 bits of output.
+            // We need to daisy-chain the carries together, to get the right result.
+            borrow = sbb(borrow, self.limbs[i], other.limbs[i], &mut self.limbs[i]);
+        }
+        borrow
+    }
+
+    /// add_with_carry adds another element to this one in place, returning a carry.
+    ///
+    /// A carry is generated (returning 1), when this addition overflows.
+    pub fn add_with_carry(&mut self, other: U256) -> u8 {
+        let mut carry: u8 = 0;
+        // Let's have confidence in Rust's ability to unroll this loop.
+        for i in 0..4 {
+            // Each intermediate result may generate up to 65 bits of output.
+            // We need to daisy-chain the carries together, to get the right result.
+            carry = adc(carry, self.limbs[i], other.limbs[i], &mut self.limbs[i]);
+        }
+        carry
+    }
 }
 
 impl ConditionallySelectable for U256 {
@@ -42,13 +72,7 @@ impl From<u64> for U256 {
 
 impl AddAssign for U256 {
     fn add_assign(&mut self, other: U256) {
-        let mut carry: u8 = 0;
-        // Let's have confidence in Rust's ability to unroll this loop.
-        for i in 0..4 {
-            // Each intermediate result may generate up to 65 bits of output.
-            // We need to daisy-chain the carries together, to get the right result.
-            carry = adc(carry, self.limbs[i], other.limbs[i], &mut self.limbs[i]);
-        }
+        self.add_with_carry(other);
     }
 }
 
@@ -63,13 +87,7 @@ impl Add for U256 {
 
 impl SubAssign for U256 {
     fn sub_assign(&mut self, other: U256) {
-        let mut borrow: u8 = 0;
-        // Let's have confidence in Rust's ability to unroll this loop.
-        for i in 0..4 {
-            // Each intermediate result may generate up to 65 bits of output.
-            // We need to daisy-chain the carries together, to get the right result.
-            borrow = sbb(borrow, self.limbs[i], other.limbs[i], &mut self.limbs[i]);
-        }
+        self.sub_with_borrow(other);
     }
 }
 
