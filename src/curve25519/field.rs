@@ -139,6 +139,12 @@ impl Z25519 {
     }
 }
 
+impl Into<[u8; 32]> for Z25519 {
+    fn into(self) -> [u8; 32] {
+        self.value.into()
+    }
+}
+
 impl From<u64> for Z25519 {
     fn from(x: u64) -> Self {
         Z25519 {

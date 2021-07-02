@@ -123,6 +123,17 @@ impl ConditionallySelectable for Point {
     }
 }
 
+impl Into<[u8; 32]> for Point {
+    fn into(self) -> [u8; 32] {
+        let zinv = self.z.inverse();
+        let x = self.x * zinv;
+        let y = self.y * zinv;
+        let mut out: [u8; 32] = y.into();
+        out[31] |= ((x.value.limbs[0] & 1) as u8) << 7;
+        out
+    }
+}
+
 impl<'a, 'b> Add<&'b Point> for &'a Point {
     type Output = Point;
 

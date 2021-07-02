@@ -84,6 +84,20 @@ impl From<u64> for U256 {
     }
 }
 
+impl Into<[u8; 32]> for U256 {
+    fn into(self) -> [u8; 32] {
+        let mut out = [0; 32];
+        let mut i = 0;
+        for limb in &self.limbs {
+            for &b in &limb.to_le_bytes() {
+                out[i] = b;
+                i += 1;
+            }
+        }
+        out
+    }
+}
+
 impl AddAssign for U256 {
     fn add_assign(&mut self, other: U256) {
         self.add_with_carry(other);
