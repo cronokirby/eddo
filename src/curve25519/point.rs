@@ -2,9 +2,11 @@
 //! This follows sections of RFC 8032:
 //! https://datatracker.ietf.org/doc/html/rfc8032
 
-use std::ops::Add;
+use std::ops::{Add, Mul};
 
-use super::{arithmetic::U256, field::Z25519};
+use subtle::{Choice, ConditionallySelectable};
+
+use super::{arithmetic::U256, field::Z25519, scalar::Scalar};
 
 const D: Z25519 = Z25519 {
     value: U256 {
@@ -14,6 +16,44 @@ const D: Z25519 = Z25519 {
             0x8cc740797779e898,
             0x52036cee2b6ffe73,
         ],
+    },
+};
+
+const B: Point = Point {
+    x: Z25519 {
+        value: U256 {
+            limbs: [
+                0xc9562d608f25d51a,
+                0x692cc7609525a7b2,
+                0xc0a4e231fdd6dc5c,
+                0x216936d3cd6e53fe,
+            ],
+        },
+    },
+    y: Z25519 {
+        value: U256 {
+            limbs: [
+                0x6666666666666658,
+                0x6666666666666666,
+                0x6666666666666666,
+                0x6666666666666666,
+            ],
+        },
+    },
+    z: Z25519 {
+        value: U256 {
+            limbs: [1, 0, 0, 0],
+        },
+    },
+    t: Z25519 {
+        value: U256 {
+            limbs: [
+                0x6dde8ab3a5b7dda3,
+                0x20f09f80775152f5,
+                0x66ea4e8e64abe37d,
+                0x67875f0fd78b7665,
+            ],
+        },
     },
 };
 
@@ -31,6 +71,16 @@ struct Point {
 }
 
 impl Point {
+    // Return the identity element of this group.
+    fn identity() -> Point {
+        Point {
+            x: Z25519::from(0),
+            y: Z25519::from(1),
+            z: Z25519::from(1),
+            t: Z25519::from(0),
+        }
+    }
+
     // Creates a point from two affine coordinates, assumed to be on the curve.
     fn from_affine_unchecked(x: Z25519, y: Z25519) -> Point {
         Point {
@@ -62,6 +112,17 @@ impl Point {
     }
 }
 
+impl ConditionallySelectable for Point {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
+        Point {
+            x: Z25519::conditional_select(&a.x, &b.x, choice),
+            y: Z25519::conditional_select(&a.y, &b.y, choice),
+            z: Z25519::conditional_select(&a.z, &b.z, choice),
+            t: Z25519::conditional_select(&a.t, &b.t, choice),
+        }
+    }
+}
+
 impl<'a, 'b> Add<&'b Point> for &'a Point {
     type Output = Point;
 
@@ -80,5 +141,22 @@ impl<'a, 'b> Add<&'b Point> for &'a Point {
             t: e * h,
             z: f * g,
         }
+    }
+}
+
+impl<'a> Mul<Scalar> for &'a Point {
+    type Output = Point;
+
+    fn mul(self, other: Scalar) -> Self::Output {
+        let mut out = Point::identity();
+        for x in other.value.limbs.iter().rev() {
+            for i in (0..64).rev() {
+                let b = Choice::from(((x >> i) & 1) as u8);
+                out.double();
+                let added = &out + &B;
+                out.conditional_assign(&added, b);
+            }
+        }
+        out
     }
 }
