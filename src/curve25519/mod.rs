@@ -25,6 +25,7 @@ impl PrivateKey {
     fn derive_public_key(&self) -> PublicKey {
         let hash = sha512::hash(&self.bytes);
         let scalar = Scalar::clamped(hash[..32].try_into().unwrap());
+        println!("scalar: {:X?}", scalar);
         PublicKey {
             bytes: (&point::B * scalar).into(),
         }

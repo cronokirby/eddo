@@ -93,7 +93,8 @@ impl Point {
     }
 
     // this calculates self + self, but in a more efficient way, exploiting symmetry.
-    fn double(&self) -> Point {
+    #[must_use]
+    fn doubled(&self) -> Point {
         // This is taken from the second routine in section 5.1.4:
         // https://datatracker.ietf.org/doc/html/rfc8032#section-5.1.4
         let a = self.x.squared();
@@ -125,6 +126,7 @@ impl ConditionallySelectable for Point {
 
 impl Into<[u8; 32]> for Point {
     fn into(self) -> [u8; 32] {
+        print!("{:X?}", self);
         let zinv = self.z.inverse();
         let x = self.x * zinv;
         let y = self.y * zinv;
@@ -163,8 +165,8 @@ impl<'a> Mul<Scalar> for &'a Point {
         for x in other.value.limbs.iter().rev() {
             for i in (0..64).rev() {
                 let b = Choice::from(((x >> i) & 1) as u8);
-                out.double();
-                let added = &out + &B;
+                out = out.doubled();
+                let added = &out + self;
                 out.conditional_assign(&added, b);
             }
         }
