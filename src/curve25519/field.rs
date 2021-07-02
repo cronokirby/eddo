@@ -102,6 +102,16 @@ impl Z25519 {
         *self *= *self;
     }
 
+    /// calculates z * z mod P
+    ///
+    /// This is like the function square, except returning a new value instead of working
+    /// in place.
+    pub fn squared(mut self) -> Z25519 {
+        self.square();
+        self
+    }
+
+
     // inverse calculates self^-1 mod P, a number which multiplied by self returns 1
     //
     // This will work for every valid number, except 0.

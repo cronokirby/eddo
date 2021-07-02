@@ -28,4 +28,23 @@ impl Point {
             t: x * y,
         }
     }
+
+    // this calculates self + self, but in a more efficient way, exploiting symmetry.
+    fn double(&self) -> Point {
+        // This is taken from the second routine in section 5.1.4:
+        // https://datatracker.ietf.org/doc/html/rfc8032#section-5.1.4
+        let a = self.x.squared();
+        let b = self.y.squared();
+        let c = self.z.squared() * 2;
+        let h = a + b;
+        let e = h - (self.x + self.y).squared();
+        let g = a - b;
+        let f = c + g;
+        Point {
+            x: e * f,
+            y: g * h,
+            t: e * h,
+            z: f * g
+        }
+    }
 }
