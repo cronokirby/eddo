@@ -19,7 +19,7 @@ const D: Z25519 = Z25519 {
     },
 };
 
-const B: Point = Point {
+pub const B: Point = Point {
     x: Z25519 {
         value: U256 {
             limbs: [
@@ -61,7 +61,7 @@ const B: Point = Point {
 ///
 /// This is used to implement the finite group we use for our cryptographic operations.
 #[derive(Clone, Copy, Debug)]
-struct Point {
+pub struct Point {
     // We use extended homogenous coordinate, as per section 5.1.4:
     // https://datatracker.ietf.org/doc/html/rfc8032#section-5.1.4
     x: Z25519,
