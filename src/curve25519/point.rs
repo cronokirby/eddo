@@ -2,7 +2,20 @@
 //! This follows sections of RFC 8032:
 //! https://datatracker.ietf.org/doc/html/rfc8032
 
-use super::field::Z25519;
+use std::ops::Add;
+
+use super::{arithmetic::U256, field::Z25519};
+
+const D: Z25519 = Z25519 {
+    value: U256 {
+        limbs: [
+            0x75eb4dca135978a3,
+            0x00700a4d4141d8ab,
+            0x8cc740797779e898,
+            0x52036cee2b6ffe73,
+        ],
+    },
+};
 
 /// Represents a point on our Edward's Curve.
 ///
@@ -44,7 +57,28 @@ impl Point {
             x: e * f,
             y: g * h,
             t: e * h,
-            z: f * g
+            z: f * g,
+        }
+    }
+}
+
+impl<'a, 'b> Add<&'b Point> for &'a Point {
+    type Output = Point;
+
+    fn add(self, other: &'b Point) -> Self::Output {
+        let a = (self.y - self.x) * (other.y - other.x);
+        let b = (self.y + self.x) * (other.y + other.x);
+        let c = self.t * D * other.t * 2;
+        let d = self.z * other.z * 2;
+        let e = b - a;
+        let f = d - c;
+        let g = d + c;
+        let h = b + a;
+        Point {
+            x: e * f,
+            y: g * h,
+            t: e * h,
+            z: f * g,
         }
     }
 }
