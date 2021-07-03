@@ -1,11 +1,11 @@
 use std::{
     convert::TryInto,
-    ops::{Add, AddAssign},
+    ops::{Add, AddAssign, Mul, MulAssign},
 };
 
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 
-use super::arithmetic::U256;
+use super::arithmetic::{U256, U512};
 
 const L: U256 = U256 {
     limbs: [
@@ -13,6 +13,15 @@ const L: U256 = U256 {
         0x14def9dea2f79cd6,
         0x0000000000000000,
         0x1000000000000000,
+    ],
+};
+
+const R: U256 = U256 {
+    limbs: [
+        0x9fb673968c28b04c,
+        0xac84188574218ca6,
+        0xffffffffffffffff,
+        0x3fffffffffffffff,
     ],
 };
 
@@ -50,6 +59,24 @@ impl Scalar {
         let borrow = l_removed.value.sub_with_borrow(L);
         self.conditional_assign(&l_removed, borrow.ct_eq(&0));
     }
+
+    pub fn reduce_barret(large: U512) -> Self {
+        let (hi, lo) = large * R;
+        let q = U256 {
+            limbs: [
+                (hi.limbs[0] << 6) | (lo.limbs[7] >> 58),
+                (hi.limbs[1] << 6) | (hi.limbs[0] >> 58),
+                (hi.limbs[2] << 6) | (hi.limbs[1] >> 58),
+                (hi.limbs[3] << 6) | (hi.limbs[2] >> 58),
+            ],
+        };
+        let to_subtract = q * L;
+        let mut scalar = Scalar {
+            value: large.lo() - to_subtract.lo(),
+        };
+        scalar.reduce_after_addition();
+        scalar
+    }
 }
 
 impl From<u64> for Scalar {
@@ -80,6 +107,22 @@ impl Add for Scalar {
 
     fn add(mut self, other: Self) -> Self::Output {
         self += other;
+        self
+    }
+}
+
+impl MulAssign for Scalar {
+    fn mul_assign(&mut self, other: Self) {
+        let large = self.value * other.value;
+        *self = Scalar::reduce_barret(large);
+    }
+}
+
+impl Mul for Scalar {
+    type Output = Self;
+
+    fn mul(mut self, other: Self) -> Self::Output {
+        self *= other;
         self
     }
 }
@@ -128,6 +171,36 @@ mod test {
         }
     }
 
+    proptest! {
+        #[test]
+        fn test_multiplication_commutative(a in arb_scalar(), b in arb_scalar()) {
+            assert_eq!(a * b, b * a);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_multiplication_associative(a in arb_scalar(), b in arb_scalar(), c in arb_scalar()) {
+            assert_eq!(a * (b * c), (a * b) * c);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_multiplication_distributive(a in arb_scalar(), b in arb_scalar(), c in arb_scalar()) {
+            assert_eq!(a * (b + c), a * b + a * c);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_multiply_one_identity(a in arb_scalar()) {
+            let one = Scalar::from(1);
+            assert_eq!(a * one, a);
+            assert_eq!(one * a, a);
+        }
+    }
+
     #[test]
     fn test_addition_examples() {
         let z1 = Scalar {
@@ -148,9 +221,17 @@ mod test {
         assert_eq!(z3, z1 + z2);
 
         let l_minus_1 = Scalar {
-            value: L - U256::from(1)
+            value: L - U256::from(1),
         };
         assert_eq!(l_minus_1 + Scalar::from(1), Scalar::from(0));
         assert_eq!(l_minus_1 + Scalar::from(20), Scalar::from(19));
+    }
+
+    #[test]
+    fn test_multiplication_examples() {
+        let l_minus_1 = Scalar {
+            value: L - U256::from(1),
+        };
+        assert_eq!(l_minus_1 * l_minus_1, Scalar::from(1));
     }
 }
