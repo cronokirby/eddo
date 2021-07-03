@@ -111,7 +111,6 @@ impl Z25519 {
         self
     }
 
-
     // inverse calculates self^-1 mod P, a number which multiplied by self returns 1
     //
     // This will work for every valid number, except 0.
@@ -230,7 +229,7 @@ impl Mul<u64> for Z25519 {
 
 impl MulAssign for Z25519 {
     fn mul_assign(&mut self, other: Self) {
-        let (hi, lo) = self.value * other.value;
+        let res = self.value * other.value;
         // At this point, we've multiplied things out, and have:
         //     hi⋅2²⁵⁶ + lo
         // Observe that 2²⁵⁶ = 2⋅(2²⁵⁵ - 19) + 38, so mod P, we have:
@@ -239,7 +238,7 @@ impl MulAssign for Z25519 {
         let mut carry = 0u64;
         for i in 0..4 {
             let full_res =
-                u128::from(carry) + u128::from(lo.limbs[i]) + 38 * u128::from(hi.limbs[i]);
+                u128::from(carry) + u128::from(res.limbs[i]) + 38 * u128::from(res.limbs[i + 4]);
             self.value.limbs[i] = full_res as u64;
             carry = (full_res >> 64) as u64;
         }
