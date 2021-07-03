@@ -272,7 +272,6 @@ mod test {
     proptest! {
         #[test]
         fn test_multiplication_identity(a in arb_u256()) {
-            let one = U256::from(1);
             let lo1 = (a * U256::from(1)).lo();
             let lo2 = (U256::from(1) * a).lo();
             
