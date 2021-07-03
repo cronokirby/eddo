@@ -149,7 +149,28 @@ pub type U512 = U<8>;
 impl U512 {
     pub fn lo(&self) -> U256 {
         U256 {
-            limbs: [self.limbs[0], self.limbs[1], self.limbs[2], self.limbs[3]]
+            limbs: [self.limbs[0], self.limbs[1], self.limbs[2], self.limbs[3]],
+        }
+    }
+
+    pub fn hi(&self) -> U256 {
+        U256 {
+            limbs: [self.limbs[4], self.limbs[5], self.limbs[6], self.limbs[7]],
+        }
+    }
+
+    pub fn from_hi_lo(hi: U256, lo: U256) -> Self {
+        U512 {
+            limbs: [
+                lo.limbs[0],
+                lo.limbs[1],
+                lo.limbs[2],
+                lo.limbs[3],
+                hi.limbs[0],
+                hi.limbs[1],
+                hi.limbs[2],
+                hi.limbs[3],
+            ],
         }
     }
 }
@@ -223,6 +244,100 @@ impl Mul for U256 {
     }
 }
 
+impl Mul<U256> for U512 {
+    type Output = (U256, U512);
+
+    fn mul(self, other: U256) -> Self::Output {
+        // You can treat both of these functions as macros. They just exist to avoid
+        // repeating this logic multiple times.
+
+        // This is essentially a 192 bit number
+        let r0 = Cell::new(0u64);
+        let r1 = Cell::new(0u64);
+        let r2 = Cell::new(0u64);
+
+        let multiply_in = |i: usize, j: usize| {
+            let uv = u128::from(self.limbs[i]) * u128::from(other.limbs[j]);
+            let mut carry = 0;
+            let mut out = 0;
+            carry = adc(carry, uv as u64, r0.get(), &mut out);
+            r0.set(out);
+            carry = adc(carry, (uv >> 64) as u64, r1.get(), &mut out);
+            r1.set(out);
+            r2.set(r2.get() + u64::from(carry));
+        };
+
+        // Given r2:r1:r0, this sets limb = r0, and then shifts to get 0:r2:r1
+        let propagate = |limb: &mut u64| {
+            *limb = r0.get();
+            r0.set(r1.get());
+            r1.set(r2.get());
+            r2.set(0);
+        };
+
+        let mut lo = U512 { limbs: [0; 8] };
+        let mut hi = U256 { limbs: [0; 4] };
+
+        multiply_in(0, 0);
+        propagate(&mut lo.limbs[0]);
+
+        multiply_in(0, 1);
+        multiply_in(1, 0);
+        propagate(&mut lo.limbs[1]);
+
+        multiply_in(0, 2);
+        multiply_in(1, 1);
+        multiply_in(2, 0);
+        propagate(&mut lo.limbs[2]);
+
+        multiply_in(0, 3);
+        multiply_in(1, 2);
+        multiply_in(2, 1);
+        multiply_in(3, 0);
+        propagate(&mut lo.limbs[3]);
+
+        multiply_in(1, 3);
+        multiply_in(2, 2);
+        multiply_in(3, 1);
+        multiply_in(4, 0);
+        propagate(&mut lo.limbs[4]);
+
+        multiply_in(2, 3);
+        multiply_in(3, 2);
+        multiply_in(4, 1);
+        multiply_in(5, 0);
+        propagate(&mut lo.limbs[5]);
+
+        multiply_in(3, 3);
+        multiply_in(4, 2);
+        multiply_in(5, 1);
+        multiply_in(6, 0);
+        propagate(&mut lo.limbs[6]);
+
+        multiply_in(4, 3);
+        multiply_in(5, 2);
+        multiply_in(6, 1);
+        multiply_in(7, 0);
+        propagate(&mut lo.limbs[7]);
+
+        multiply_in(5, 3);
+        multiply_in(6, 2);
+        multiply_in(7, 1);
+        propagate(&mut hi.limbs[0]);
+
+        multiply_in(6, 3);
+        multiply_in(7, 2);
+        propagate(&mut hi.limbs[1]);
+
+        multiply_in(7, 3);
+        propagate(&mut hi.limbs[2]);
+
+        hi.limbs[3] = r0.get();
+
+        (hi, lo)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -274,9 +389,25 @@ mod test {
         fn test_multiplication_identity(a in arb_u256()) {
             let lo1 = (a * U256::from(1)).lo();
             let lo2 = (U256::from(1) * a).lo();
-            
+
             assert_eq!(lo1, a);
             assert_eq!(lo2, a);
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_high_512_256_multiplication(a in arb_u256(), b in arb_u256()) {
+            let (hi, _) = U512::from_hi_lo(a, 0.into()) * b;
+            assert_eq!(hi, (a * b).hi());
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_low_512_256_multiplication(a in arb_u256(), b in arb_u256()) {
+            let (_, lo) = U512::from_hi_lo(0.into(), a) * b;
+            assert_eq!(lo, a * b);
         }
     }
 
@@ -300,7 +431,7 @@ mod test {
             limbs: [0, 0, 1, 0],
         };
         c = U512 {
-            limbs: [0, 0, 1, 0, 0, 0, 0, 0]
+            limbs: [0, 0, 1, 0, 0, 0, 0, 0],
         };
         assert_eq!(a * b, c);
     }
