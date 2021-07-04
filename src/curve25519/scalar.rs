@@ -16,6 +16,15 @@ const L: U256 = U256 {
     ],
 };
 
+const N_SQUARED: U256 = U256 {
+    limbs: [
+        0xe2edf685ab128969,
+        0x680392762298a31d,
+        0x3dceec73d217f5be,
+        0x01b399411b7c309a
+    ],
+};
+
 const R: U256 = U256 {
     limbs: [
         0x9fb673968c28b04c,
@@ -84,6 +93,35 @@ impl From<u64> for Scalar {
         Scalar {
             value: U256::from(x),
         }
+    }
+}
+
+impl From<[u8; 64]> for Scalar {
+    fn from(mut bytes: [u8; 64]) -> Self {
+        let hi = u64::from(bytes[63]);
+        bytes[63] = 0;
+        let mut lo = U512 { limbs: [0; 8] };
+        for (i, chunk) in bytes.chunks_exact(8).enumerate() {
+            lo.limbs[i] = u64::from_le_bytes(chunk.try_into().unwrap());
+        }
+        println!("N_SQUARED: {:X?}", N_SQUARED);
+        println!("hi: {:X?}", hi);
+        let (hi_reduced_hi, hi_reduced_lo) = N_SQUARED * hi;
+        println!("hi_reduced_lo: {:X?}", hi_reduced_lo);
+        println!("hi_reduced_hi: {:X?}", hi_reduced_hi);
+        let hi_reduced = U512 {
+            limbs: [
+                hi_reduced_lo.limbs[0],
+                hi_reduced_lo.limbs[1],
+                hi_reduced_lo.limbs[2],
+                hi_reduced_lo.limbs[3],
+                hi_reduced_hi,
+                0,
+                0,
+                0,
+            ],
+        };
+        Scalar::reduce_barret(lo + hi_reduced)
     }
 }
 
@@ -233,5 +271,27 @@ mod test {
             value: L - U256::from(1),
         };
         assert_eq!(l_minus_1 * l_minus_1, Scalar::from(1));
+    }
+
+    #[test]
+    fn test_large_reduction_examples() {
+        let mut bytes = [0xFF; 64];
+        let mut expected = Scalar {
+            value: U256 {
+                limbs: [
+                    0xa40611e3449c0f00,
+                    0xd00e1ba768859347,
+                    0xceec73d217f5be65,
+                    0x0399411b7c309a3d,
+                ],
+            },
+        };
+        assert_eq!(Scalar::from(bytes), expected);
+        bytes = [0; 64];
+        bytes[0] = 1;
+        expected.value = U256 {
+            limbs: [1, 0, 0, 0],
+        };
+        assert_eq!(Scalar::from(bytes), expected);
     }
 }
