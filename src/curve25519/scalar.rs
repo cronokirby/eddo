@@ -21,7 +21,7 @@ const N_SQUARED: U256 = U256 {
         0xe2edf685ab128969,
         0x680392762298a31d,
         0x3dceec73d217f5be,
-        0x01b399411b7c309a
+        0x01b399411b7c309a,
     ],
 };
 
@@ -118,6 +118,12 @@ impl From<[u8; 64]> for Scalar {
             ],
         };
         Scalar::reduce_barret(lo + hi_reduced)
+    }
+}
+
+impl Into<[u8; 32]> for Scalar {
+    fn into(self) -> [u8; 32] {
+        self.value.into()
     }
 }
 

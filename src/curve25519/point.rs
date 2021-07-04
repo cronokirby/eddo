@@ -126,7 +126,6 @@ impl ConditionallySelectable for Point {
 
 impl Into<[u8; 32]> for Point {
     fn into(self) -> [u8; 32] {
-        print!("{:X?}", self);
         let zinv = self.z.inverse();
         let x = self.x * zinv;
         let y = self.y * zinv;
