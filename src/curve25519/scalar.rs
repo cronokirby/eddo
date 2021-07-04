@@ -54,13 +54,13 @@ impl Scalar {
         Scalar { value }
     }
 
-    pub fn reduce_after_addition(&mut self) {
+    fn reduce_after_addition(&mut self) {
         let mut l_removed = *self;
         let borrow = l_removed.value.sub_with_borrow(L);
         self.conditional_assign(&l_removed, borrow.ct_eq(&0));
     }
 
-    pub fn reduce_barret(large: U512) -> Self {
+    fn reduce_barret(large: U512) -> Self {
         let (hi, lo) = large * R;
         let q = U256 {
             limbs: [
