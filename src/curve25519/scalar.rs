@@ -104,11 +104,7 @@ impl From<[u8; 64]> for Scalar {
         for (i, chunk) in bytes.chunks_exact(8).enumerate() {
             lo.limbs[i] = u64::from_le_bytes(chunk.try_into().unwrap());
         }
-        println!("N_SQUARED: {:X?}", N_SQUARED);
-        println!("hi: {:X?}", hi);
         let (hi_reduced_hi, hi_reduced_lo) = N_SQUARED * hi;
-        println!("hi_reduced_lo: {:X?}", hi_reduced_lo);
-        println!("hi_reduced_hi: {:X?}", hi_reduced_hi);
         let hi_reduced = U512 {
             limbs: [
                 hi_reduced_lo.limbs[0],
