@@ -152,4 +152,17 @@ mod test {
         let public = private.derive_public_key();
         assert!(public.verify(message, sig));
     }
+
+    #[test]
+    fn test_some_random_signatures() {
+        for a in 0..4u8 {
+            for b in 0..4u8 {
+                let private = PrivateKey { bytes: [b; 32] };
+                let public = private.derive_public_key();
+                let message = &[a];
+                let sig = private.sign(message);
+                assert!(public.verify(message, sig));
+            }
+        }
+    }
 }
