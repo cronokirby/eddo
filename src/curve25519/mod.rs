@@ -15,13 +15,13 @@ mod field;
 mod point;
 mod scalar;
 
-const SIGNATURE_SIZE: usize = 64;
+pub const SIGNATURE_SIZE: usize = 64;
 
 pub struct Signature {
     pub bytes: [u8; SIGNATURE_SIZE],
 }
 
-const PUBLIC_KEY_SIZE: usize = 32;
+pub const PUBLIC_KEY_SIZE: usize = 32;
 
 pub struct PublicKey {
     pub bytes: [u8; PUBLIC_KEY_SIZE],
@@ -57,7 +57,7 @@ impl PublicKey {
     }
 }
 
-const PRIVATE_KEY_SIZE: usize = 32;
+pub const PRIVATE_KEY_SIZE: usize = 32;
 
 pub struct PrivateKey {
     pub bytes: [u8; PRIVATE_KEY_SIZE],

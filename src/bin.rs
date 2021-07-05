@@ -1,8 +1,11 @@
-use eddo::{gen_keypair, PrivateKey, PublicKey};
+use eddo::{
+    gen_keypair, PrivateKey, PublicKey, Signature, PRIVATE_KEY_SIZE, PUBLIC_KEY_SIZE,
+    SIGNATURE_SIZE,
+};
 use rand::rngs::OsRng;
-use std::io;
-use std::io::Write;
-use std::fs::File;
+use std::fs::{self, File};
+use std::io::{self, BufReader};
+use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
@@ -50,8 +53,12 @@ enum AppError {
     ///
     /// This could probably be improved further.
     ParseError(String),
+    /// An error that occurrs when a signature check fails
+    FailedSignature,
     /// An error that happened while doing IO of some kind
     IO(io::Error),
+    /// An error that happened while doing hex decoding
+    HexError(hex::FromHexError),
 }
 
 impl From<io::Error> for AppError {
@@ -60,8 +67,26 @@ impl From<io::Error> for AppError {
     }
 }
 
+impl From<hex::FromHexError> for AppError {
+    fn from(err: hex::FromHexError) -> Self {
+        AppError::HexError(err)
+    }
+}
+
 /// The type of result produced our application
 type AppResult<T> = Result<T, AppError>;
+
+fn decode_prefixed_hex<const N: usize>(prefix: &str, input: &str) -> AppResult<[u8; N]> {
+    let just_hex = input
+        .strip_prefix(prefix)
+        .ok_or(AppError::ParseError("incorrect prefix".into()))?;
+    if just_hex.len() != 2 * N {
+        return Err(AppError::ParseError("incorrect size".into()));
+    }
+    let mut bytes = [0; N];
+    hex::decode_to_slice(just_hex, &mut bytes)?;
+    Ok(bytes)
+}
 
 const PUBLIC_KEY_PREFIX: &'static str = "エッドの公開鍵";
 
@@ -69,10 +94,34 @@ fn format_public_key(public: PublicKey) -> String {
     format!("{}{}", PUBLIC_KEY_PREFIX, hex::encode(public.bytes))
 }
 
+fn decode_public_key(input: &str) -> AppResult<PublicKey> {
+    Ok(PublicKey {
+        bytes: decode_prefixed_hex(PUBLIC_KEY_PREFIX, input)?,
+    })
+}
+
 const PRIVATE_KEY_PREFIX: &'static str = "エッドの秘密鍵";
 
 fn format_private_key(private: PrivateKey) -> String {
     format!("{}{}", PRIVATE_KEY_PREFIX, hex::encode(private.bytes))
+}
+
+fn decode_private_key(input: &str) -> AppResult<PrivateKey> {
+    Ok(PrivateKey {
+        bytes: decode_prefixed_hex(PRIVATE_KEY_PREFIX, input)?,
+    })
+}
+
+const SIGNATURE_PREFIX: &'static str = "エッドの署名";
+
+fn format_signature(signature: Signature) -> String {
+    format!("{}{}", SIGNATURE_PREFIX, hex::encode(signature.bytes))
+}
+
+fn decode_signature(input: &str) -> AppResult<Signature> {
+    Ok(Signature {
+        bytes: decode_prefixed_hex(SIGNATURE_PREFIX, input)?,
+    })
 }
 
 fn generate(out_path: &Path) -> AppResult<()> {
@@ -85,10 +134,47 @@ fn generate(out_path: &Path) -> AppResult<()> {
     Ok(())
 }
 
+fn sign(key_path: &Path, in_path: &Path) -> AppResult<()> {
+    let key_file = File::open(key_path)?;
+    let key_reader = BufReader::new(key_file);
+    let mut maybe_private = None;
+    for maybe_line in key_reader.lines() {
+        let line = maybe_line?;
+        if line.starts_with("#") {
+            continue;
+        }
+        maybe_private = Some(decode_private_key(&line)?);
+        break;
+    }
+    let private = maybe_private.ok_or(AppError::ParseError("no private key in file".into()))?;
+    let in_data = fs::read(in_path)?;
+    let sig = private.sign(&in_data);
+    println!("{}", format_signature(sig));
+    Ok(())
+}
+
+fn verify(public: PublicKey, signature: Signature, in_path: &Path) -> AppResult<()> {
+    let in_data = fs::read(in_path)?;
+    if !public.verify(&in_data, signature) {
+        return Err(AppError::FailedSignature);
+    }
+    println!("Ok!");
+    Ok(())
+}
+
 fn main() -> AppResult<()> {
     let args = Args::from_args();
     match args {
         Args::Generate { out_file } => generate(&out_file),
-        _ => unimplemented!(),
+        Args::Sign { key_file, in_file } => sign(&key_file, &&in_file),
+        Args::Verify {
+            public,
+            signature,
+            in_file,
+        } => {
+            let public_key = decode_public_key(&public)?;
+            let decoded_signature = decode_signature(&signature)?;
+            verify(public_key, decoded_signature, &in_file)
+        }
     }
 }
