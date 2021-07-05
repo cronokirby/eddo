@@ -1,11 +1,14 @@
 use std::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     ops::{Add, AddAssign, Mul, MulAssign},
 };
 
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 
-use super::arithmetic::{U256, U512};
+use super::{
+    arithmetic::{U256, U512},
+    error::SignatureError,
+};
 
 const L: U256 = U256 {
     limbs: [
@@ -124,6 +127,22 @@ impl From<[u8; 64]> for Scalar {
 impl Into<[u8; 32]> for Scalar {
     fn into(self) -> [u8; 32] {
         self.value.into()
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for Scalar {
+    type Error = SignatureError;
+
+    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+        if value.len() < 32 {
+            return Err(SignatureError::InvalidScalar);
+        }
+        let value_bytes: [u8; 32] = value[..32].try_into().unwrap();
+        let value = U256::from(value_bytes);
+        if value.geq(L) {
+            return Err(SignatureError::InvalidScalar);
+        }
+        Ok(Scalar { value })
     }
 }
 

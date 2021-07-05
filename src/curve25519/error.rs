@@ -1,4 +1,4 @@
-enum SignatureError {
+pub enum SignatureError {
     InvalidPoint,
     InvalidFieldElement,
     InvalidScalar,

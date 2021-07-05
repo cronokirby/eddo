@@ -1,10 +1,13 @@
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use crate::arch::adc;
 
-use super::arithmetic::U256;
+use super::{arithmetic::U256, error::SignatureError};
 
 const P: U256 = U256 {
     limbs: [
@@ -141,6 +144,22 @@ impl Z25519 {
 impl Into<[u8; 32]> for Z25519 {
     fn into(self) -> [u8; 32] {
         self.value.into()
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for Z25519 {
+    type Error = SignatureError;
+
+    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+        if value.len() < 32 {
+            return Err(SignatureError::InvalidFieldElement);
+        }
+        let value_bytes: [u8; 32] = value[..32].try_into().unwrap();
+        let value = U256::from(value_bytes);
+        if value.geq(P) {
+            return Err(SignatureError::InvalidScalar);
+        }
+        Ok(Z25519 { value })
     }
 }
 

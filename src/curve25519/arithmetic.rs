@@ -1,5 +1,6 @@
 use std::{
     cell::Cell,
+    convert::TryInto,
     ops::{Add, AddAssign, Mul, Sub, SubAssign},
 };
 
@@ -57,6 +58,18 @@ impl<const N: usize> U<N> {
             carry = adc(carry, self.limbs[i], to_add, &mut self.limbs[i]);
         }
     }
+
+    /// Check if self >= other.
+    ///
+    /// This method is not constant-time.
+    pub fn geq(&self, other: Self) -> bool {
+        for i in (0..N).rev() {
+            if other.limbs[i] > self.limbs[i] {
+                return false
+            }
+        }
+        true
+    }
 }
 
 impl<const N: usize> ConditionallySelectable for U<N> {
@@ -86,6 +99,16 @@ impl Into<[u8; 32]> for U256 {
                 out[i] = b;
                 i += 1;
             }
+        }
+        out
+    }
+}
+
+impl From<[u8; 32]> for U256 {
+    fn from(x: [u8; 32]) -> Self {
+        let mut out = Self { limbs: [0; 4] };
+        for (i, chunk) in x.chunks_exact(8).enumerate() {
+            out.limbs[i] = u64::from_le_bytes(chunk.try_into().unwrap());
         }
         out
     }
