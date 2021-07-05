@@ -118,7 +118,7 @@ impl Point {
     pub fn eq(&self, other: &Self) -> bool {
         let z1inv = self.z.inverse();
         let x1 = self.x * z1inv;
-        let y1 = self.x * z1inv;
+        let y1 = self.y * z1inv;
 
         let z2inv = other.z.inverse();
         let x2 = other.x * z2inv;
@@ -144,6 +144,8 @@ impl Into<[u8; 32]> for Point {
         let zinv = self.z.inverse();
         let x = self.x * zinv;
         let y = self.y * zinv;
+        println!("into, x: {:X?}", x);
+        println!("into, y: {:X?}", y);
         let mut out: [u8; 32] = y.into();
         out[31] |= ((x.value.limbs[0] & 1) as u8) << 7;
         out
