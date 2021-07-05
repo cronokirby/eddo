@@ -1,7 +1,4 @@
-use eddo::{
-    gen_keypair, PrivateKey, PublicKey, Signature, PRIVATE_KEY_SIZE, PUBLIC_KEY_SIZE,
-    SIGNATURE_SIZE,
-};
+use eddo::{gen_keypair, PrivateKey, PublicKey, Signature};
 use rand::rngs::OsRng;
 use std::fs::{self, File};
 use std::io::{self, BufReader};
