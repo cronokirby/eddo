@@ -5,6 +5,9 @@ edition = "2018"
 description = "Ed25519 signatures (don't use)"
 license = "MIT"
 
+[features]
+binary = ["structopt"]
+
 [lib]
 name = "eddo"
 path = "src/lib.rs"
@@ -12,10 +15,12 @@ path = "src/lib.rs"
 [[bin]]
 name = "eddo"
 path = "src/bin.rs"
+required-features = ["binary"]
 
 [dependencies]
 hex = "0.4.3"
 rand = "0.8.4"
+structopt = { version = "0.3.22", optional = true }
 subtle = "2.4.0"
 
 [dev-dependencies]
