@@ -1,6 +1,9 @@
 use eddo::{gen_keypair, PrivateKey, PublicKey};
 use rand::rngs::OsRng;
-use std::path::PathBuf;
+use std::io;
+use std::io::Write;
+use std::fs::File;
+use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
 extern crate hex;
@@ -40,6 +43,26 @@ enum Args {
     },
 }
 
+/// Represents the kind of error our application generates
+#[derive(Debug)]
+enum AppError {
+    /// A parse error, with a string for information.
+    ///
+    /// This could probably be improved further.
+    ParseError(String),
+    /// An error that happened while doing IO of some kind
+    IO(io::Error),
+}
+
+impl From<io::Error> for AppError {
+    fn from(err: io::Error) -> Self {
+        AppError::IO(err)
+    }
+}
+
+/// The type of result produced our application
+type AppResult<T> = Result<T, AppError>;
+
 const PUBLIC_KEY_PREFIX: &'static str = "エッドの公開鍵";
 
 fn format_public_key(public: PublicKey) -> String {
@@ -52,9 +75,20 @@ fn format_private_key(private: PrivateKey) -> String {
     format!("{}{}", PRIVATE_KEY_PREFIX, hex::encode(private.bytes))
 }
 
-fn main() {
-    let args = Args::from_args();
+fn generate(out_path: &Path) -> AppResult<()> {
     let (public, private) = gen_keypair(&mut OsRng);
-    println!("{}", format_public_key(public));
-    println!("{}", format_private_key(private));
+    let formatted_public = format_public_key(public);
+    let formatted_private = format_private_key(private);
+    let mut out_file = File::create(out_path)?;
+    writeln!(out_file, "# Public Key: {}", formatted_public)?;
+    writeln!(out_file, "{}", formatted_private)?;
+    Ok(())
+}
+
+fn main() -> AppResult<()> {
+    let args = Args::from_args();
+    match args {
+        Args::Generate { out_file } => generate(&out_file),
+        _ => unimplemented!(),
+    }
 }
