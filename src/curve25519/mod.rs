@@ -1,12 +1,17 @@
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 use rand::{CryptoRng, RngCore};
 
-use crate::{curve25519::scalar::Scalar, sha512};
+use crate::{
+    curve25519::{point::Point, scalar::Scalar},
+    sha512,
+};
+
+use self::error::SignatureError;
 
 mod arithmetic;
-mod field;
 mod error;
+mod field;
 mod point;
 mod scalar;
 
@@ -28,6 +33,27 @@ impl PublicKey {
         PublicKey {
             bytes: (&point::B * scalar).into(),
         }
+    }
+
+    fn verify_result(&self, message: &[u8], signature: Signature) -> Result<(), SignatureError> {
+        let r = Point::try_from(&signature.bytes[..32])?;
+        let s = Scalar::try_from(&signature.bytes[32..])?;
+        let a = Point::try_from(&self.bytes[..])?;
+        let mut to_hash = Vec::with_capacity(64 + message.len());
+        let r_bytes: [u8; 32] = r.into();
+        to_hash.extend_from_slice(&r_bytes);
+        let a_bytes: [u8; 32] = a.into();
+        to_hash.extend_from_slice(&a_bytes);
+        to_hash.extend_from_slice(message);
+        let k = Scalar::from(sha512::hash(&to_hash));
+        if !(&point::B * s).eq(&(&r + &(&a * k))) {
+            return Err(SignatureError::InvalidEquation);
+        }
+        Ok(())
+    }
+
+    pub fn verify(&self, message: &[u8], signature: Signature) -> bool {
+        self.verify_result(message, signature).is_ok()
     }
 }
 
@@ -64,9 +90,7 @@ impl PrivateKey {
 
         let big_s: [u8; 32] = (r + k * s).into();
 
-        let mut out = Signature {
-            bytes: [0; 64]
-        };
+        let mut out = Signature { bytes: [0; 64] };
         out.bytes[..32].copy_from_slice(&big_r);
         out.bytes[32..].copy_from_slice(&big_s);
 
@@ -98,8 +122,11 @@ mod test {
             &mut expected,
         )
         .unwrap();
-        let sig = private.sign(&[]);
+        let message = &[];
+        let sig = private.sign(message);
         assert_eq!(sig.bytes, expected);
+        let public = private.derive_public_key();
+        assert!(public.verify(message, sig));
     }
 
     #[test]
@@ -116,7 +143,10 @@ mod test {
             &mut expected,
         )
         .unwrap();
-        let sig = private.sign(&[0x72]);
+        let message = &[0x72];
+        let sig = private.sign(message);
         assert_eq!(sig.bytes, expected);
+        let public = private.derive_public_key();
+        assert!(public.verify(message, sig));
     }
 }
