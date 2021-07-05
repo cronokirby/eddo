@@ -18,6 +18,17 @@ const P: U256 = U256 {
     ],
 };
 
+const TWO_P_MINUS_1_OVER_4: Z25519 = Z25519 {
+    value: U256 {
+        limbs: [
+            0xc4ee1b274a0ea0b0,
+            0x2f431806ad2fe478,
+            0x2b4d00993dfbd7a7,
+            0x2b8324804fc1df0b,
+        ],
+    },
+};
+
 /// Represents an element in the field Z/(2^255 - 19).
 ///
 /// The operations in this field are defined through arithmetic modulo
@@ -138,6 +149,34 @@ impl Z25519 {
             current_power.square();
         }
         out
+    }
+
+    pub fn fraction_root(u: Self, v: Self) -> Option<Self> {
+        let v_2 = v.squared();
+        let v_3 = v * v_2;
+        let v_7 = v_3 * v_2.squared();
+        let u_v_7 = u * v_7;
+        // powering by (p - 5) ** 8, which is 0xFF...FD
+        let mut powered = Self::from(1);
+        let mut current_power = u_v_7;
+        // Handling 0b01
+        powered *= current_power;
+        current_power.square();
+        current_power.square();
+        // Now, 250 one bits
+        for _ in 0..250 {
+            powered *= current_power;
+            current_power.square();
+        }
+        let x = u * v_3 * powered;
+        let v_x_2 = v * x.squared();
+        if v_x_2.value.eq(u.value) {
+            return Some(x);
+        }
+        if v_x_2.value.eq((-u).value) {
+            return Some(x * TWO_P_MINUS_1_OVER_4);
+        }
+        None
     }
 }
 

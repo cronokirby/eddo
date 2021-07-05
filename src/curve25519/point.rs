@@ -2,11 +2,14 @@
 //! This follows sections of RFC 8032:
 //! https://datatracker.ietf.org/doc/html/rfc8032
 
-use std::ops::{Add, Mul};
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::{Add, Mul},
+};
 
 use subtle::{Choice, ConditionallySelectable};
 
-use super::{arithmetic::U256, field::Z25519, scalar::Scalar};
+use super::{arithmetic::U256, error::SignatureError, field::Z25519, scalar::Scalar};
 
 const D: Z25519 = Z25519 {
     value: U256 {
@@ -132,6 +135,31 @@ impl Into<[u8; 32]> for Point {
         let mut out: [u8; 32] = y.into();
         out[31] |= ((x.value.limbs[0] & 1) as u8) << 7;
         out
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for Point {
+    type Error = SignatureError;
+
+    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
+        if value.len() < 32 {
+            return Err(SignatureError::InvalidPoint);
+        }
+        let mut value_bytes: [u8; 32] = value[..32].try_into().unwrap();
+        let x_0 = u64::from(value_bytes[31] >> 7);
+        value_bytes[31] &= 0x7F;
+        let y = Z25519::try_from(&value_bytes[..])?;
+        let y_2 = y.squared();
+        let u = y_2 - Z25519::from(1);
+        let v = D * y_2 + Z25519::from(1);
+        let mut x = Z25519::fraction_root(u, v).ok_or(SignatureError::InvalidPoint)?;
+        if x_0 == 1 && x.value.eq(U256::from(0)) {
+            return Err(SignatureError::InvalidPoint);
+        }
+        if x_0 != x.value.limbs[0] % 2 {
+            x = -x;
+        }
+        Ok(Point::from_affine_unchecked(x, y))
     }
 }
 

@@ -65,7 +65,19 @@ impl<const N: usize> U<N> {
     pub fn geq(&self, other: Self) -> bool {
         for i in (0..N).rev() {
             if other.limbs[i] > self.limbs[i] {
-                return false
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Check if self == other.
+    ///
+    /// This method is not constant-time.
+    pub fn eq(&self, other: Self) -> bool {
+        for i in (0..N).rev() {
+            if other.limbs[i] != self.limbs[i] {
+                return false;
             }
         }
         true
