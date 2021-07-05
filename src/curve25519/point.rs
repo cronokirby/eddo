@@ -144,8 +144,6 @@ impl Into<[u8; 32]> for Point {
         let zinv = self.z.inverse();
         let x = self.x * zinv;
         let y = self.y * zinv;
-        println!("into, x: {:X?}", x);
-        println!("into, y: {:X?}", y);
         let mut out: [u8; 32] = y.into();
         out[31] |= ((x.value.limbs[0] & 1) as u8) << 7;
         out

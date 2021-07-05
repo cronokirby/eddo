@@ -37,11 +37,8 @@ impl PublicKey {
 
     fn verify_result(&self, message: &[u8], signature: Signature) -> Result<(), SignatureError> {
         let r = Point::try_from(&signature.bytes[..32])?;
-        println!("r: {:X?}", r);
         let s = Scalar::try_from(&signature.bytes[32..])?;
-        println!("s: {:X?}", s);
         let a = Point::try_from(&self.bytes[..])?;
-        println!("a: {:X?}", a);
         let mut to_hash = Vec::with_capacity(64 + message.len());
         let r_bytes: [u8; 32] = r.into();
         to_hash.extend_from_slice(&r_bytes);
