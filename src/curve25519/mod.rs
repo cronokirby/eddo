@@ -6,6 +6,7 @@ use crate::{curve25519::scalar::Scalar, sha512};
 
 mod arithmetic;
 mod field;
+mod error;
 mod point;
 mod scalar;
 
