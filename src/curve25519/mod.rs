@@ -17,12 +17,14 @@ mod scalar;
 
 pub const SIGNATURE_SIZE: usize = 64;
 
+#[derive(Debug, Clone, Copy)]
 pub struct Signature {
     pub bytes: [u8; SIGNATURE_SIZE],
 }
 
 pub const PUBLIC_KEY_SIZE: usize = 32;
 
+#[derive(Debug, Clone, Copy)]
 pub struct PublicKey {
     pub bytes: [u8; PUBLIC_KEY_SIZE],
 }
@@ -59,6 +61,7 @@ impl PublicKey {
 
 pub const PRIVATE_KEY_SIZE: usize = 32;
 
+#[derive(Debug, Clone)]
 pub struct PrivateKey {
     pub bytes: [u8; PRIVATE_KEY_SIZE],
 }
