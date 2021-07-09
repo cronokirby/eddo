@@ -4,7 +4,7 @@
 
 use std::{
     convert::{TryFrom, TryInto},
-    ops::{Add, Mul, Neg},
+    ops::{Add, Mul},
 };
 
 use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};

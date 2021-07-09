@@ -1,4 +1,7 @@
-use std::{convert::{TryFrom, TryInto}, ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub}};
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg},
+};
 
 use subtle::{ConditionallySelectable, ConstantTimeEq};
 
@@ -156,7 +159,7 @@ impl Neg for Scalar {
 
     fn neg(self) -> Self::Output {
         let mut out = Scalar {
-            value: U256::from(0)
+            value: U256::from(0),
         };
         let borrow = out.value.sub_with_borrow(self.value);
         out.value.cond_add(L, borrow.ct_eq(&1));
@@ -216,7 +219,6 @@ mod test {
             }
         }
     }
-
 
     proptest! {
         #[test]
