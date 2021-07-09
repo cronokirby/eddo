@@ -47,7 +47,7 @@ impl PublicKey {
         to_hash.extend_from_slice(&a_bytes);
         to_hash.extend_from_slice(message);
         let k = Scalar::from(sha512::hash(&to_hash));
-        let check_encoded: [u8; 32] = (point::B * s + (-a * k)).into();
+        let check_encoded: [u8; 32] = (point::B * s + (a * -k)).into();
         if r_bytes != &check_encoded {
             return Err(SignatureError::InvalidEquation);
         }

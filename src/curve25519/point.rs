@@ -163,19 +163,6 @@ impl<'a> TryFrom<&'a [u8]> for Point {
     }
 }
 
-impl Neg for Point {
-    type Output = Point;
-
-    fn neg(self) -> Self::Output {
-        Point {
-            x: -self.x,
-            y: self.y,
-            z: self.z,
-            t: -self.t,
-        }
-    }
-}
-
 impl Add for Point {
     type Output = Point;
 
