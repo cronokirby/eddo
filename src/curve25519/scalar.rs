@@ -1,6 +1,6 @@
 use std::{
     convert::{TryFrom, TryInto},
-    ops::{Add, AddAssign, Mul, MulAssign},
+    ops::{Add, AddAssign, Mul, MulAssign, Neg},
 };
 
 use subtle::{ConditionallySelectable, ConstantTimeEq};

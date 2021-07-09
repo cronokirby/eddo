@@ -4,7 +4,7 @@
 
 use std::{
     convert::{TryFrom, TryInto},
-    ops::{Add, Mul},
+    ops::{Add, Mul, Neg},
 };
 
 use subtle::{Choice, ConditionallySelectable};
@@ -172,6 +172,19 @@ impl<'a> TryFrom<&'a [u8]> for Point {
             x = -x;
         }
         Ok(Point::from_affine_unchecked(x, y))
+    }
+}
+
+impl Neg for Point {
+    type Output = Point;
+
+    fn neg(self) -> Self::Output {
+        Point {
+            x: -self.x,
+            y: self.y,
+            z: self.z,
+            t: -self.t,
+        }
     }
 }
 

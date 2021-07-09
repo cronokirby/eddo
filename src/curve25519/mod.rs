@@ -38,17 +38,17 @@ impl PublicKey {
     }
 
     fn verify_result(&self, message: &[u8], signature: Signature) -> Result<(), SignatureError> {
-        let r = Point::try_from(&signature.bytes[..32])?;
         let s = Scalar::try_from(&signature.bytes[32..])?;
         let a = Point::try_from(&self.bytes[..])?;
         let mut to_hash = Vec::with_capacity(64 + message.len());
-        let r_bytes: [u8; 32] = r.into();
+        let r_bytes = &signature.bytes[..32];
         to_hash.extend_from_slice(&r_bytes);
         let a_bytes: [u8; 32] = a.into();
         to_hash.extend_from_slice(&a_bytes);
         to_hash.extend_from_slice(message);
         let k = Scalar::from(sha512::hash(&to_hash));
-        if !(point::B * s).eq(&(r + a * k)) {
+        let check_encoded: [u8; 32] = (point::B * s + (-a * k)).into();
+        if r_bytes != &check_encoded {
             return Err(SignatureError::InvalidEquation);
         }
         Ok(())
