@@ -188,12 +188,14 @@ impl U512 {
         }
     }
 
+    #[cfg(test)]
     pub fn hi(&self) -> U256 {
         U256 {
             limbs: [self.limbs[4], self.limbs[5], self.limbs[6], self.limbs[7]],
         }
     }
 
+    #[cfg(test)]
     pub fn from_hi_lo(hi: U256, lo: U256) -> Self {
         U512 {
             limbs: [

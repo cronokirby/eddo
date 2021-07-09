@@ -114,18 +114,6 @@ impl Point {
             z: f * g,
         }
     }
-
-    pub fn eq(&self, other: &Self) -> bool {
-        let z1inv = self.z.inverse();
-        let x1 = self.x * z1inv;
-        let y1 = self.y * z1inv;
-
-        let z2inv = other.z.inverse();
-        let x2 = other.x * z2inv;
-        let y2 = other.y * z2inv;
-
-        x1.value.eq(x2.value) && y1.value.eq(y2.value)
-    }
 }
 
 impl ConditionallySelectable for Point {
