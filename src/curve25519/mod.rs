@@ -33,7 +33,7 @@ impl PublicKey {
     fn from_hash(hash: &[u8; 64]) -> Self {
         let scalar = Scalar::clamped(hash[..32].try_into().unwrap());
         PublicKey {
-            bytes: (&point::B * scalar).into(),
+            bytes: (point::B * scalar).into(),
         }
     }
 
@@ -48,7 +48,7 @@ impl PublicKey {
         to_hash.extend_from_slice(&a_bytes);
         to_hash.extend_from_slice(message);
         let k = Scalar::from(sha512::hash(&to_hash));
-        if !(&point::B * s).eq(&(&r + &(&a * k))) {
+        if !(point::B * s).eq(&(r + a * k)) {
             return Err(SignatureError::InvalidEquation);
         }
         Ok(())
@@ -75,7 +75,7 @@ impl PrivateKey {
     pub fn sign(&self, message: &[u8]) -> Signature {
         let hash = sha512::hash(&self.bytes);
         let s = Scalar::clamped(hash[..32].try_into().unwrap());
-        let a: [u8; 32] = (&point::B * s).into();
+        let a: [u8; 32] = (point::B * s).into();
         let prefix = &hash[32..];
 
         let mut to_hash = Vec::with_capacity(64 + message.len());
@@ -83,7 +83,7 @@ impl PrivateKey {
         to_hash.extend_from_slice(message);
         let r = Scalar::from(sha512::hash(&to_hash));
 
-        let big_r: [u8; 32] = (&point::B * r).into();
+        let big_r: [u8; 32] = (point::B * r).into();
 
         to_hash.clear();
         to_hash.extend_from_slice(&big_r);

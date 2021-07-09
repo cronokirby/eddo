@@ -175,10 +175,10 @@ impl<'a> TryFrom<&'a [u8]> for Point {
     }
 }
 
-impl<'a, 'b> Add<&'b Point> for &'a Point {
+impl Add for Point {
     type Output = Point;
 
-    fn add(self, other: &'b Point) -> Self::Output {
+    fn add(self, other: Point) -> Self::Output {
         let a = (self.y - self.x) * (other.y - other.x);
         let b = (self.y + self.x) * (other.y + other.x);
         let c = self.t * D * other.t * 2;
@@ -196,7 +196,7 @@ impl<'a, 'b> Add<&'b Point> for &'a Point {
     }
 }
 
-impl<'a> Mul<Scalar> for &'a Point {
+impl Mul<Scalar> for Point {
     type Output = Point;
 
     fn mul(self, other: Scalar) -> Self::Output {
@@ -205,7 +205,7 @@ impl<'a> Mul<Scalar> for &'a Point {
             for i in (0..64).rev() {
                 let b = Choice::from(((x >> i) & 1) as u8);
                 out = out.doubled();
-                let added = &out + self;
+                let added = out + self;
                 out.conditional_assign(&added, b);
             }
         }
