@@ -7,7 +7,7 @@ use std::{
     ops::{Add, Mul, Neg},
 };
 
-use subtle::{Choice, ConditionallySelectable};
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 use super::{arithmetic::U256, error::SignatureError, field::Z25519, scalar::Scalar};
 
@@ -214,12 +214,25 @@ impl Mul<Scalar> for Point {
 
     fn mul(self, other: Scalar) -> Self::Output {
         let mut out = Point::identity();
+        const WINDOW_SIZE: usize = 4;
+        let mut window = [Point::identity(); (1 << WINDOW_SIZE) - 1];
+        window[0] = self;
+        for i in 1..window.len() {
+            window[i] = self + window[i - 1];
+        }
         for x in other.value.limbs.iter().rev() {
-            for i in (0..64).rev() {
-                let b = Choice::from(((x >> i) & 1) as u8);
+            for i in (0..64).step_by(WINDOW_SIZE).rev() {
                 out = out.doubled();
-                let added = out + self;
-                out.conditional_assign(&added, b);
+                out = out.doubled();
+                out = out.doubled();
+                out = out.doubled();
+
+                let w = ((x >> i) & ((1 << WINDOW_SIZE) - 1)) as usize;
+                let mut selected = Point::identity();
+                for i in 0..window.len() {
+                    selected.conditional_assign(&window[i], w.ct_eq(&(i + 1)));
+                }
+                out = out + selected;
             }
         }
         out
